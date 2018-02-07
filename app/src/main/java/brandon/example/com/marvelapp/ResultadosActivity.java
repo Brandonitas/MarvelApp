@@ -1,144 +1,113 @@
 package brandon.example.com.marvelapp;
 
 import android.app.Activity;
-import android.content.ClipData;
-import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Adapter;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.ListView;
+import android.util.LruCache;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.NetworkImageView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
-import brandon.example.com.marvelapp.adapters.ItuneArrayAdapter;
 import brandon.example.com.marvelapp.adapters.MarvelAdapter;
-import brandon.example.com.marvelapp.pojo.Itune;
 import brandon.example.com.marvelapp.pojo.MarveDude;
 
-public class MainActivity extends Activity {
-
-    private EditText editText;
-    private ImageButton atras, adelante;
-    private ListView listView;
+public class ResultadosActivity extends Activity {
+    private String id;
     private RequestQueue mQueue;
-    private int max = 0;
-    private MarvelAdapter marvelAdapter;
+    private TextView name, description;
+    private ImageLoader imageLoader;
+    NetworkImageView networkImageView;
 
-    //private ArrayAdapter<String> arrayAdapter;
 
-    //private ItuneArrayAdapter ituneArrayAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        listView = (ListView) findViewById(R.id.lista);
-        atras = (ImageButton) findViewById(R.id.atras);
-        adelante = (ImageButton) findViewById(R.id.adelante);
-
-        marvelAdapter = new MarvelAdapter(this,R.layout.marvel_layout, new ArrayList<MarveDude>());
-        metodoAdapter(max);
+        setContentView(R.layout.activity_resultados);
+        name = (TextView) findViewById(R.id.textView);
+        description = (TextView) findViewById(R.id.textView2);
+        networkImageView = (NetworkImageView)findViewById(R.id.imageView3);
 
 
-
-    }
-
-    public void metodoAdapter(int max){
-        //ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,new ArrayList<String>());
-        listView.setAdapter(marvelAdapter);
+        Bundle bundle = getIntent().getExtras();
+        id = bundle.getString("id");
         mQueue = VolleySingleton.getInstance(this).getRequestQueue();
-        jsonMarvel(getMarvelString(max), marvelAdapter);
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                MarveDude md = marvelAdapter.getItem(i);
-                Intent intent = new Intent(MainActivity.this, ResultadosActivity.class);
-                intent.putExtra("id",md.id);
-                startActivity(intent);
-
-
-            }
-        });
-    }
-
-    public void adelante(View view){
-
-        max += 100;
-        if(max>=1000){
-            Toast.makeText(this, "Llegaste al limite superior", Toast.LENGTH_SHORT).show();
-            max-=100;
-            return;
-        }else{
-            metodoAdapter(max);
-        }
-
-
-    }
-
-    public void atras(View view){
-        max-=100;
-        if(max<0){
-            Toast.makeText(this, "Llegaste al limite inferior", Toast.LENGTH_SHORT).show();
-            max+=100;
-            return;
-        }else{
-            metodoAdapter(max);
-        }
+        jsonMarvel(getMarvelString());
     }
 
 
 
+
+    //NEW
     private final String LOG_TAG = "MARVEL";
 
     private static char[] HEXCodes = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 
-    private void jsonMarvel(String url, final MarvelAdapter adapter){
-        adapter.clear();
+    private void jsonMarvel(String url){
+
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
                 try {
+
                     JSONObject data = response.getJSONObject("data");
                     JSONArray jsonArray = data.getJSONArray("results");
-
+                    Log.e("MYLOG",jsonArray.length()+"");
                     for(int i=0;i<jsonArray.length();i++){
+
                         JSONObject jsonObject = jsonArray.getJSONObject(i);
                         JSONObject thumbnail = jsonObject.getJSONObject("thumbnail");
-                        String string = thumbnail.getString("path")+"/portrait_small"+"."+thumbnail.getString("extension");
+                        String string = thumbnail.getString("path")+"/portrait_uncanny"+"."+thumbnail.getString("extension");
                         MarveDude marveDude = new MarveDude();
-                        marveDude.id = jsonObject.getLong("id")+"";
+                        marveDude.id = id;
+                        marveDude.description = jsonObject.getString("description");
                         marveDude.name = jsonObject.getString("name");
                         marveDude.url = string;
-                        adapter.add(marveDude);
+
+                        Log.e("MYLOG",marveDude.name+"");
+                        name.setText(marveDude.name);
+                        if(marveDude.description.equalsIgnoreCase("")){
+                            description.setText("No tiene descripción");
+                        }else{
+                            description.setText(marveDude.description);
+                        }
+
+
+                        RequestQueue requestQueue = VolleySingleton.getInstance(ResultadosActivity.this).getRequestQueue();
+                        ImageLoader imageLoader = new ImageLoader(requestQueue, new ImageLoader.ImageCache() {
+                            private final LruCache<String, Bitmap> cache = new LruCache<String, Bitmap>(10);
+                            @Override
+                            public Bitmap getBitmap(String url) {
+                                return cache.get(url);
+                            }
+
+                            @Override
+                            public void putBitmap(String url, Bitmap bitmap) {
+                                cache.put(url,bitmap);
+                            }
+                        });
+
+                        networkImageView.setImageUrl(marveDude.url,imageLoader);
+
                     }
-                    adapter.notifyDataSetChanged();
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -150,10 +119,11 @@ public class MainActivity extends Activity {
             }
         });
 
+
         mQueue.add(request);
     }
 
-    private String getMarvelString(int offset){
+    private String getMarvelString(){
         String ts = Long.toString(System.currentTimeMillis() / 1000);
         String apikey = "0cd5d5ff9345949a365cf8f33f16db5d";
         String hash = md5(ts + "b3619745bea3f3d4374e1f17c93ce92dfce21635" + "0cd5d5ff9345949a365cf8f33f16db5d");
@@ -164,7 +134,7 @@ public class MainActivity extends Activity {
                 Conexión con el getway de marvel
             */
         final String CHARACTER_BASE_URL =
-                "http://gateway.marvel.com/v1/public/characters";
+                "http://gateway.marvel.com/v1/public/characters/"+id;
 
             /*
                 Configuración de la petición
@@ -174,15 +144,14 @@ public class MainActivity extends Activity {
         final String API_KEY = "apikey";
         final String HASH = "hash";
         final String ORDER = "orderBy";
+        final String CHARACTER = "characterId";
 
         Uri builtUri;
         builtUri = Uri.parse(CHARACTER_BASE_URL+"?").buildUpon()
                 .appendQueryParameter(TIMESTAMP, ts)
                 .appendQueryParameter(API_KEY, apikey)
                 .appendQueryParameter(HASH, hash)
-                .appendQueryParameter(ORDER, "name")
-                .appendQueryParameter("limit", "100")
-                .appendQueryParameter("offset", offset+"")
+                .appendQueryParameter(CHARACTER, id)
                 .build();
 
         return builtUri.toString();
@@ -215,6 +184,8 @@ public class MainActivity extends Activity {
         return new String(result);
     }
 
+    public void imprimir(){
 
+    }
 
 }

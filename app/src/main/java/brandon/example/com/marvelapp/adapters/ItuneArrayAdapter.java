@@ -30,16 +30,16 @@ public class ItuneArrayAdapter extends ArrayAdapter<Itune> {
     public View getView(int position, View convertView, ViewGroup parent) { //regresa un renglon a la vez, posotion, en que posicion de los datos esta
         Itune ituneObj = arrayList.get(position);
         if(convertView == null){//si mi renglon es null
-            convertView = LayoutInflater.from(getContext()).inflate(R.layout.itunes_layout,parent,false);
+            convertView = LayoutInflater.from(getContext()).inflate(R.layout.marvel_layout,parent,false);
 
         }
         TextView collectionName = (TextView) convertView.findViewById(R.id.collection);
-        TextView trackName = (TextView) convertView.findViewById(R.id.trackName);
-        TextView trackPrice = (TextView) convertView.findViewById(R.id.trackPrice);
+        //TextView trackName = (TextView) convertView.findViewById(R.id.trackName);
+        //TextView trackPrice = (TextView) convertView.findViewById(R.id.trackPrice);
 
         collectionName.setText(ituneObj.collectionName);
-        trackName.setText(ituneObj.trackName);
-        trackPrice.setText(ituneObj.trackPrice+"");
+        //trackName.setText(ituneObj.trackName);
+        //trackPrice.setText(ituneObj.trackPrice+"");
 
         return convertView;
     }
